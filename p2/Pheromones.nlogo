@@ -4,7 +4,7 @@ patches-own [pheromones]
 to reset
   clear-all
   create-turtles numberofants [ setxy random-xcor random-ycor ]
-  ask turtles[set shape "bug" set size 2]
+  ask turtles[set shape "bug" set size 1 set color one-of remove red base-colors ]
 
   reset-ticks
 
@@ -48,12 +48,13 @@ end
 
 to color-patch ;; recolors the patches given their new pheromone value
   ask patches [
-    let red_channel pheromones * 10 ;; we create a variable "red_channel" which has the value of 10 times pheromones. This is just so we can see it better.
-    if red_channel > 255
+    ;; We create a variable "red_channel" which has the value of 200 times pheromones. This is just so we can see it better.
+    let red_channel pheromones * 200;;(1000 / count turtles)
+    if red_channel > 300
     [
-      set red_channel 255 ;;If the intensity is higher of 255 just set it to 255
+      set red_channel 300 ;;If the intensity is higher of 300 just set it to 300
     ]
-    set pcolor (list red_channel 0 0) ;;Set the color of the patch
+    set pcolor 10 + (5 * (red_channel / 300)) ;; We get one of the 5 red tones deppending on the intensity
   ]
 end
 @#$#@#$#@
@@ -119,15 +120,15 @@ NIL
 1
 
 SLIDER
-237
-45
-432
-78
+233
+41
+428
+74
 numberofants
 numberofants
 0
 1000
-178.0
+200.0
 1
 1
 ants
@@ -151,45 +152,45 @@ NIL
 1
 
 SLIDER
-239
-87
-411
-120
+235
+83
+407
+116
 diffusion
 diffusion
 0
 1
-0.31
+0.9
 0.01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-240
-129
-435
-162
+236
+125
+431
+158
 smell-range
 smell-range
 0
 10
-4.0
+5.0
 1
 1
 patches
 HORIZONTAL
 
 SLIDER
-240
-171
-412
-204
+236
+167
+408
+200
 evaporation
 evaporation
 0
 1
-1.0
+0.1
 0.01
 1
 NIL
