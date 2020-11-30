@@ -1,25 +1,84 @@
 turtles-own [
   current-messages ;; Lista de mensajes actuales
   next-messages    ;; Lista de mensajes para la siguiente iteración
+  energy
+  probOcuparPos
+  carTrest
+  isStopped
 ]
 
 to setup
   clear-all
   reset-ticks
+  set-default-shape turtles "car"
 
-  create-turtles 10 [
+  ask patches [
+    set pcolor 137
+  ]
+
+  create-turtles numberofcars [
     set next-messages [] ;; Inicializamos las listas de mensajes recibidos
     setxy random-xcor random-ycor
+    set energy (carenergy + random 20) ;; + random 20 para que no se paren todos a la vez
+    set carTrest trest
+    set isStopped false
+    set probOcuparPos random 100
+    set color probOcuparPos
   ]
 end
 
 to go
+  handle-show-energy
   swap-messages            ;; Activamos los mensajes mandados en la iteración anterior
   process-messages         ;; Procesamos los mensajes
-  ;; move? do something?   ;; Actuamos
+  handle-stopped-cars
+  move-cars
+  ;; Actuamos
   send-messages            ;; Mandamos mensajes nuevos
   tick
 end
+
+to handle-show-energy
+  ask turtles [
+    ifelse show-energy?
+      [ set label energy ]
+      [ set label "" ]
+  ]
+end
+
+
+to handle-stopped-cars
+  ask turtles [
+    if isStopped = true [ ;; Gestionando los coches con energia = 0
+      set energy energy + 1 ;; Aumento su energia
+      set carTrest carTrest - 1 ;; Decremento el contador que los mantiene parados
+      if carTrest = 0 [ ;; Si dicho contador llega a 0
+        set isStopped false ;; Ya no estan parados
+        set carTrest trest ;; Reinicio el contador para cuando vuelva a ocurrir
+      ]
+    ]
+  ]
+end
+
+
+
+to move-cars ;; Debe llamarse despues de handle-stopped-cars
+  ask turtles [
+    if (energy > 0) and (isStopped = false) [
+      right random 180
+      left random 180
+      forward 1
+      set energy energy - 1
+      if energy = 0 [
+        set isStopped true
+      ]
+    ]
+  ]
+end
+
+
+
+
 
 to swap-messages
   ask turtles [
@@ -30,8 +89,8 @@ end
 
 to process-messages
   ask turtles [
-    foreach current-messages [
-      process-message (item 0 ?) (item 1 ?) (item 2 ?) ;; Cada mensaje es una lista [emisor tipo mensaje]
+    foreach current-messages [ ?1 ->
+      process-message (item 0 ?1) (item 1 ?1) (item 2 ?1) ;; Cada mensaje es una lista [emisor tipo mensaje]
     ]
   ]
 end
@@ -79,10 +138,10 @@ end
 GRAPHICS-WINDOW
 210
 10
-649
-470
-16
-16
+647
+448
+-1
+-1
 13.0
 1
 10
@@ -136,6 +195,62 @@ NIL
 NIL
 NIL
 1
+
+SLIDER
+29
+108
+208
+141
+carenergy
+carenergy
+0
+100
+55.0
+1
+1
+points
+HORIZONTAL
+
+SLIDER
+30
+149
+223
+182
+numberofcars
+numberofcars
+0
+100
+74.0
+1
+1
+cars
+HORIZONTAL
+
+SLIDER
+31
+195
+203
+228
+trest
+trest
+0
+20
+16.0
+1
+1
+ticks
+HORIZONTAL
+
+SWITCH
+32
+245
+187
+278
+show-energy?
+show-energy?
+1
+1
+-1000
 
 @#$#@#$#@
 ## WHAT IS IT?
@@ -478,9 +593,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3.1
+NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -496,7 +610,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@
