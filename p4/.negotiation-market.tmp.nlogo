@@ -77,7 +77,7 @@ to handle-buyer-meets-seller
   ask buyers [
     ask neighbors [
       ask sellers [
-      ;; Si willing-to-pay-price < willing-to-sell-price, no hay negocio (failed deals ++)
+      ;; Si willing-to-pay-price < willing-to-sell-price, no hay negocio
       ;; Si willing-to-pay-price >= willing-to-sell-price, la transaccion es la suma de ambos entre dos (media)
       ;; El seller da al mercado su porcentaje
       ;; Una vez terminado el tramite, cada uno reevalua lo que ha pasado y ajusta sus preferencias
@@ -88,7 +88,7 @@ end
 
 to handle-deaths
   ask buyers [ if consecutive-failed-deals > maximum-consecutively-failed-deals [ die ] ]
-  ask sellers [ if consecutive-failed-sales > maximum-consecutively-failed-deals [ die ] ]
+  ask sellers
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
