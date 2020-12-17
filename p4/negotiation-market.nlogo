@@ -1,6 +1,10 @@
 ;; Market's variables
 
 globals [
+  ;; static variables
+  market-intrest
+
+  ;; dynamic variables
   market-tax ;; Percentage of the transfer taken by the market
   market-benefits ;; Total amount of money that the market has taken
 ]
@@ -14,24 +18,29 @@ breed [ sellers seller ]
 
 buyers-own [
   money
+  max-rounds ;; number of offers the buyer can make in a row to a sigle seller
   willing-to-pay-price
   paired? ;; True if the buyer is conducting business
   paired-seller ;; Seller who is conducting business with
-  consecutive-failed-deals ;; If a buyer gets an amount of consecutive failed deals, it dies
+  consecutive-failed-deals-price ;; variable that counts the number of consecutive negociate fails due to the price. It resets when a buyer enters a negociation
+  consecutive-failed-deals-rounds ;; variable that counts the number of consecutive negociate fails due to the max-round. It resets when a buyer completes a negociation(buys)
 ]
 
 ;; Seller only variables
 
 sellers-own [
+  max-actions ;; number of offers the seller can take in a row from a single buyer
   willing-to-sell-price
   paired? ;; True if the seller is conducting business
+  messages
   paired-buyer ;; Seller who is conducting business with
-  consecutive-failed-sales ;; If a seller gets an amount of consecutive failed sales, it dies
+  consecutive-failed-sales ;; variable that counts the number of consecutive negociate fails due to the max-round. It resets when a seller completes a negociation(sells)
 ]
 
 ;; Setup functions
 
 to setup
+  set market-intrest 0.01
   clear-all
   reset-ticks
   make-buyers
@@ -44,7 +53,10 @@ to make-buyers
   set-default-shape buyers "person"
   create-buyers numbuyers [
     set color blue
+    set money average-initial-money + (random 500 - random 500)
     set willing-to-pay-price (average-willing-amount-to-pay + (random 30 - random 30)) ;; Initial willingness depends on input from the user
+    set consecutive-failed-deals-price 0
+    set consecutive-failed-deals-rounds 0
     setxy random-xcor random-ycor
   ]
 end
@@ -54,11 +66,13 @@ to make-sellers
   create-sellers numsellers [
     set color red
     set willing-to-sell-price (product-price + (random 30 - random 30)) ;; Initial selling price depends on input from the user
+    set consecutive-failed-deals-rounds 0
     setxy random-xcor (max-pycor - (max-pycor / 10)) ;; Sellers display their products forming a line
   ]
 end
 
 to go
+  ;; hauriem de moure sols si paired es fals
   move-buyers ;; Cada buyer se mueve a lo loco tratando de buscar un seller
   handle-buyer-meets-seller
   handle-deaths ;; If a buyer or seller consistently fails to make a deal, it'll die.
@@ -74,19 +88,42 @@ to move-buyers
 end
 
 to handle-buyer-meets-seller
-  ask buyers [
-    ask neighbors [
-      ask sellers [
-      ;; Si willing-to-pay-price < willing-to-sell-price, no hay negocio (failed deals ++)
+  let avaliable-buyers buyers with [paired? = false]
+  ask avaliable-buyers [
+    let max-buying willing-to-pay-price
+    let the-seller one-of link-neighbors with [breed = sellers]
+
+    if the-seller != nobody[
+      let min-selling [willing-to-sell-price] of the-seller
+
       ;; Si willing-to-pay-price >= willing-to-sell-price, la transaccion es la suma de ambos entre dos (media)
-      ;; El seller da al mercado su porcentaje
-      ;; Una vez terminado el tramite, cada uno reevalua lo que ha pasado y ajusta sus preferencias
+      if (max-buying <= min-selling ) and (money > min-selling)
+      [
+        negociate self the-seller
       ]
     ]
+    ;; Si willing-to-pay-price < willing-to-sell-price, no hay negocio (failed deals ++)
+
+
   ]
 end
 
-to handle-deaths
+to negociate [ some-buyer some-seller ]
+  ;; Fiquem el paired a ture tant del seller com del buyer
+  ask some-buyer [
+    set paired? true
+  ]
+  ask some-seller [
+    set paired? true
+  ]
+
+
+
+  ;; El seller da al mercado su porcentaje
+  ;; Una vez terminado el tramite, cada uno reevalua lo que ha pasado y ajusta sus preferencias
+end
+
+to handle-deaths ;; jo sincerament matava només els buyyers que porten moltes iteracions sense comprar res
   ask buyers [ if consecutive-failed-deals > maximum-consecutively-failed-deals [ die ] ]
   ask sellers [ if consecutive-failed-sales > maximum-consecutively-failed-deals [ die ] ]
 end
@@ -116,7 +153,7 @@ GRAPHICS-WINDOW
 0
 1
 ticks
-30.0
+1.0
 
 SLIDER
 30
@@ -191,7 +228,7 @@ average-initial-money
 average-initial-money
 0
 1000
-100.0
+1000.0
 1
 1
 euros
@@ -221,7 +258,7 @@ average-willing-amount-to-pay
 average-willing-amount-to-pay
 0
 1000
-120.0
+131.0
 1
 1
 euros
@@ -601,5 +638,5 @@ true
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
 @#$#@#$#@
-0
+1
 @#$#@#$#@
