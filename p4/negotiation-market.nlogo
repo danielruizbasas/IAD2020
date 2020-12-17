@@ -60,7 +60,7 @@ to make-sellers
   set-default-shape sellers "person"
   create-sellers numsellers [
     set color red
-    set willing-to-sell-price (product-price + (random 30 - random 30)) ;; Initial selling price depends on input from the user
+    set willing-to-sell-price (average-product-price + (random 30 - random 30)) ;; Initial selling price depends on input from the user
     set consecutive-failed-deals 0
     set next-messages []
     setxy random-xcor random-ycor ;;(max-pycor - (max-pycor / 10)) ;; Sellers display their products forming a line
@@ -72,7 +72,6 @@ to go
   process-messages                  ;; Procesamos los mensajes. En el caso de los sellers enviamos aqui las respuestas a las distintas offers
   move-buyers                       ;; Cada buyer se mueve a lo loco tratando de buscar un seller
   handle-buyer-meets-seller         ;; Mandamos mensajes nuevos
-  handle-deaths                     ;; If a buyer or seller consistently fails to make a deal, it'll die.
   ask buyers[
     set money money + money-per-tick
   ]
@@ -102,14 +101,6 @@ to handle-buyer-meets-seller
       ]
     ]
   ]
-end
-to handle-seller-meets-buyer
-
-end
-
-to negociate-buyer [ some-buyer some-seller ]
-  ;; El seller da al mercado su porcentaje
-  ;; Una vez terminado el tramite, cada uno reevalua lo que ha pasado y ajusta sus preferencias
 end
 
 to swap-messages
@@ -158,7 +149,7 @@ to process-offer-message [sender message] ;; seller whe he gets an offer
     print ( word "(accept (y " self ") (x "sender") amount("message"))")
 
     ;; Rise the selling price of his offer (as he is doing well)
-    set willing-to-sell-price willing-to-sell-price + 5
+    set willing-to-sell-price willing-to-sell-price + random 5
 
     ;; As we have complited a deal we set the following value to zero
     set consecutive-failed-deals 0]
@@ -168,7 +159,7 @@ to process-offer-message [sender message] ;; seller whe he gets an offer
 
     ;; Reduce the selling price of his offer (as he is doing bad) if the seller sended 3 consecutevely decline messages
     ifelse consecutive-failed-deals >= 3
-    [ set willing-to-sell-price willing-to-sell-price - 5
+    [ set willing-to-sell-price willing-to-sell-price - random 5
       set consecutive-failed-deals 0]
     [ ;; Increment the consecutive-failed-deals by one
       set consecutive-failed-deals consecutive-failed-deals + 1]
@@ -183,7 +174,7 @@ to process-accept-message [sender message] ;; buyer when gets accepted his offer
   set market-benefits market-benefits + (market-tax * willing-to-buy-price)
 
   ;; Reduce the buying price of his offer (as he is doing well)
-  set willing-to-buy-price willing-to-buy-price - 5
+  set willing-to-buy-price willing-to-buy-price - random 5
 
   ;; As we have complited a deal we set the following value to zero
   set consecutive-failed-deals 0
@@ -193,7 +184,7 @@ end
 to process-decline-message [sender message] ;; buyer when gets rejected his offer
   ;; Rise the buying price of his offer (as he is doing bad) if the buyer got 3 consecutevely decline messages
   ifelse consecutive-failed-deals >= 3
-  [ set willing-to-buy-price willing-to-buy-price - 5
+  [ set willing-to-buy-price willing-to-buy-price - random 5
     set consecutive-failed-deals 0]
 
   [ ;; Increment the consecutive-failed-deals by one
@@ -209,10 +200,6 @@ to send-message [recipient kind message]
   ]
 end
 
-to handle-deaths ;; jo sincerament matava només els buyyers que porten moltes iteracions sense comprar res
-  ask buyers [ if consecutive-failed-deals > maximum-consecutively-failed-deals [ die print(word self " has died.") ] ]
-  ask sellers [ if consecutive-failed-deals > maximum-consecutively-failed-deals [ die print(word self " has died.") ] ]
-end
 @#$#@#$#@
 GRAPHICS-WINDOW
 270
@@ -250,7 +237,7 @@ numbuyers
 numbuyers
 0
 100
-50.0
+100.0
 1
 1
 buyers
@@ -265,7 +252,7 @@ numsellers
 numsellers
 0
 100
-100.0
+50.0
 1
 1
 sellers
@@ -306,45 +293,15 @@ NIL
 1
 
 SLIDER
-0
-400
-245
-433
+5
+370
+250
+403
 average-initial-money
 average-initial-money
 0
 1000
-384.0
-1
-1
-euros
-HORIZONTAL
-
-SLIDER
-0
-205
-200
-238
-product-price
-product-price
-0
-400
-113.0
-1
-1
-euros
-HORIZONTAL
-
-SLIDER
-1
-251
-251
-284
-average-willing-amount-to-pay
-average-willing-amount-to-pay
-0
-200
-133.0
+500.0
 1
 1
 euros
@@ -352,29 +309,59 @@ HORIZONTAL
 
 SLIDER
 5
-305
-235
-338
+175
+240
+208
+average-product-price
+average-product-price
+0
+200
+150.0
+1
+1
+euros
+HORIZONTAL
+
+SLIDER
+6
+221
+241
+254
+average-willing-amount-to-pay
+average-willing-amount-to-pay
+0
+200
+140.0
+1
+1
+euros
+HORIZONTAL
+
+SLIDER
+5
+275
+240
+308
 maximum-consecutively-failed-deals
 maximum-consecutively-failed-deals
 0
 100
-42.0
+3.0
 1
 1
 deals
 HORIZONTAL
 
 SLIDER
-4
-355
-176
-388
+9
+325
+181
+358
 money-per-tick
 money-per-tick
 0
 10
-5.0
+1.0
 1
 1
 euros
