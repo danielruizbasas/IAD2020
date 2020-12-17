@@ -2,10 +2,9 @@
 
 globals [
   ;; static variables
-  market-intrest
+  market-tax ;; Percentage of the transfer taken by the market
 
   ;; dynamic variables
-  market-tax ;; Percentage of the transfer taken by the market
   market-benefits ;; Total amount of money that the market has taken
 ]
 
@@ -24,23 +23,26 @@ buyers-own [
   paired-seller ;; Seller who is conducting business with
   consecutive-failed-deals-price ;; variable that counts the number of consecutive negociate fails due to the price. It resets when a buyer enters a negociation
   consecutive-failed-deals-rounds ;; variable that counts the number of consecutive negociate fails due to the max-round. It resets when a buyer completes a negociation(buys)
+  current-messages
+  next-messages
 ]
 
 ;; Seller only variables
 
 sellers-own [
-  max-actions ;; number of offers the seller can take in a row from a single buyer
+  max-ofers ;; number of offers the seller can take in a row from a single buyer
   willing-to-sell-price
-  paired? ;; True if the seller is conducting business
   messages
   paired-buyer ;; Seller who is conducting business with
   consecutive-failed-sales ;; variable that counts the number of consecutive negociate fails due to the max-round. It resets when a seller completes a negociation(sells)
+  current-messages
+  next-messages
 ]
 
 ;; Setup functions
 
 to setup
-  set market-intrest 0.01
+  set market-tax 0.01
   clear-all
   reset-ticks
   make-buyers
@@ -99,28 +101,83 @@ to handle-buyer-meets-seller
       ;; Si willing-to-pay-price >= willing-to-sell-price, la transaccion es la suma de ambos entre dos (media)
       if (max-buying <= min-selling ) and (money > min-selling)
       [
-        negociate self the-seller
+        ;; Fiquem el paired a ture tant del seller com del buyer
+        negociate-buyer self the-seller
       ]
+      ;; Si willing-to-pay-price < willing-to-sell-price, no hay negocio (failed deals ++)
+      else
     ]
-    ;; Si willing-to-pay-price < willing-to-sell-price, no hay negocio (failed deals ++)
+
 
 
   ]
 end
 
-to negociate [ some-buyer some-seller ]
-  ;; Fiquem el paired a ture tant del seller com del buyer
-  ask some-buyer [
-    set paired? true
-  ]
-  ask some-seller [
-    set paired? true
-  ]
+to negociate-buyer [ some-buyer some-seller ]
+
+
 
 
 
   ;; El seller da al mercado su porcentaje
   ;; Una vez terminado el tramite, cada uno reevalua lo que ha pasado y ajusta sus preferencias
+end
+
+to swap-messages
+  ask turtles [
+    set current-messages next-messages
+    set next-messages []
+  ]
+end
+
+to process-messages
+  ask turtles [
+    foreach current-messages [ ?1 ->
+      process-message (item 0 ?1) (item 1 ?1) (item 2 ?1) ;; Cada mensaje es una lista [emisor tipo mensaje]
+    ]
+  ]
+end
+
+to process-message [sender kind message]
+  if kind = "Ping" [
+    process-ping-message sender message
+  ]
+
+  if kind = "Pong" [
+    process-pong-message sender message
+  ]
+end
+
+to process-ping-message [sender message]
+  ;; A los pings respondemos con un pong
+  send-message sender "Pong" message
+  print (word self " PING? " message " from " sender)
+end
+
+to process-pong-message [sender message]
+  ;; En los pongs solo mostramos que lo hemos recibido
+  print (word self " PONG! " message " from " sender)
+end
+
+to send-messages
+  ask turtles [
+    let turtle-targets [who] of (other turtles) in-radius 2 ;;get all the turtles in radious 2
+    foreach turtle-targets
+      [ turtle-one ->
+        let dice random 100
+        if dice < probOcuparPos and isStopped = true[  ;;if the probablity is higher than a rendom and the target is stopped
+          send-message (turtle turtle-one) "Ping" ticks
+        ]
+      ]
+  ]
+end
+
+to send-message [recipient kind message]
+  ;; Añadimos el mensaje a la cola de mensajes del agente receptor
+  ;; (se añade a next-messages para que el receptor no lo vea hasta la siguiente iteración)
+  ask recipient [
+    set next-messages lput (list myself kind message) next-messages
+  ]
 end
 
 to handle-deaths ;; jo sincerament matava només els buyyers que porten moltes iteracions sense comprar res
