@@ -63,7 +63,7 @@ to make-sellers
     set willing-to-sell-price (product-price + (random 30 - random 30)) ;; Initial selling price depends on input from the user
     set consecutive-failed-deals 0
     set next-messages []
-    setxy random-xcor (max-pycor - (max-pycor / 10)) ;; Sellers display their products forming a line
+    setxy random-xcor random-ycor ;;(max-pycor - (max-pycor / 10)) ;; Sellers display their products forming a line
   ]
 end
 
@@ -250,7 +250,7 @@ numbuyers
 numbuyers
 0
 100
-12.0
+50.0
 1
 1
 buyers
@@ -265,7 +265,7 @@ numsellers
 numsellers
 0
 100
-10.0
+100.0
 1
 1
 sellers
@@ -306,10 +306,10 @@ NIL
 1
 
 SLIDER
-720
-20
-985
-53
+0
+400
+245
+433
 average-initial-money
 average-initial-money
 0
@@ -321,55 +321,55 @@ euros
 HORIZONTAL
 
 SLIDER
-722
-76
-922
-109
+0
+205
+200
+238
 product-price
 product-price
 0
 400
-50.0
+113.0
 1
 1
 euros
 HORIZONTAL
 
 SLIDER
-723
-127
-1013
-160
+1
+251
+251
+284
 average-willing-amount-to-pay
 average-willing-amount-to-pay
 0
 200
-132.0
+133.0
 1
 1
 euros
 HORIZONTAL
 
 SLIDER
-724
-176
-1080
-209
+5
+305
+235
+338
 maximum-consecutively-failed-deals
 maximum-consecutively-failed-deals
 0
 100
-5.0
+42.0
 1
 1
 deals
 HORIZONTAL
 
 SLIDER
-726
-231
-898
-264
+4
+355
+176
+388
 money-per-tick
 money-per-tick
 0
@@ -381,23 +381,24 @@ euros
 HORIZONTAL
 
 PLOT
-5
-180
-250
-370
+710
+45
+1255
+400
 plot 1
 Ticks
-Average price of deals
-0.0
-200.0
+NIL
 0.0
 10.0
+-20.0
+20.0
 true
-false
+true
 "" ""
 PENS
-"default" 1.0 0 -2674135 true "" "plot mean [willing-to-buy-price] of buyers"
-"pen-1" 1.0 0 -16777216 true "" "auto-plot-off\n;; now we draw an axis by drawing a line from the origin...\nplotxy 0 0\n;; ...to a point that's way, way, way off to the right.\nplotxy 1000000000 0\n;; now that we're done drawing the axis, we can turn\n;; auto-plot back on again\nauto-plot-on"
+"Average deal price" 1.0 0 -2674135 true "" "plot mean [willing-to-buy-price] of buyers"
+"Zero" 1.0 0 -16777216 true "" "auto-plot-off\n;; now we draw an axis by drawing a line from the origin...\nplotxy 0 0\n;; ...to a point that's way, way, way off to the right.\nplotxy 1000000000 0\n;; now that we're done drawing the axis, we can turn\n;; auto-plot back on again\nauto-plot-on"
+"Average money" 1.0 0 -13345367 true "" "plot mean [money] of buyers"
 
 @#$#@#$#@
 ## WHAT IS IT?
