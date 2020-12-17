@@ -17,12 +17,8 @@ breed [ sellers seller ]
 
 buyers-own [
   money
-  max-rounds ;; number of offers the buyer can make in a row to a sigle seller
-  willing-to-pay-price
-  paired? ;; True if the buyer is conducting business
-  paired-seller ;; Seller who is conducting business with
-  consecutive-failed-deals-price ;; variable that counts the number of consecutive negociate fails due to the price. It resets when a buyer enters a negociation
-  consecutive-failed-deals-rounds ;; variable that counts the number of consecutive negociate fails due to the max-round. It resets when a buyer completes a negociation(buys)
+  willing-to-buy-price
+  consecutive-failed-deals ;; variable that counts the number of consecutive negociate fails due to the price. It resets when a buyer enters a negociation
   current-messages
   next-messages
 ]
@@ -30,11 +26,8 @@ buyers-own [
 ;; Seller only variables
 
 sellers-own [
-  max-ofers ;; number of offers the seller can take in a row from a single buyer
   willing-to-sell-price
-  messages
-  paired-buyer ;; Seller who is conducting business with
-  consecutive-failed-sales ;; variable that counts the number of consecutive negociate fails due to the max-round. It resets when a seller completes a negociation(sells)
+  consecutive-failed-deals ;; variable that counts the number of consecutive negociate fails due to the max-round. It resets when a seller completes a negociation(sells)
   current-messages
   next-messages
 ]
@@ -56,9 +49,9 @@ to make-buyers
   create-buyers numbuyers [
     set color blue
     set money average-initial-money + (random 500 - random 500)
-    set willing-to-pay-price (average-willing-amount-to-pay + (random 30 - random 30)) ;; Initial willingness depends on input from the user
-    set consecutive-failed-deals-price 0
-    set consecutive-failed-deals-rounds 0
+    set willing-to-buy-price (average-willing-amount-to-pay + (random 30 - random 30)) ;; Initial willingness depends on input from the user
+    set consecutive-failed-deals 0
+    set next-messages []
     setxy random-xcor random-ycor
   ]
 end
@@ -68,16 +61,21 @@ to make-sellers
   create-sellers numsellers [
     set color red
     set willing-to-sell-price (product-price + (random 30 - random 30)) ;; Initial selling price depends on input from the user
-    set consecutive-failed-deals-rounds 0
+    set consecutive-failed-deals 0
+    set next-messages []
     setxy random-xcor (max-pycor - (max-pycor / 10)) ;; Sellers display their products forming a line
   ]
 end
 
 to go
-  ;; hauriem de moure sols si paired es fals
-  move-buyers ;; Cada buyer se mueve a lo loco tratando de buscar un seller
-  handle-buyer-meets-seller
-  handle-deaths ;; If a buyer or seller consistently fails to make a deal, it'll die.
+  swap-messages                     ;; Activamos los mensajes mandados en la iteración anterior
+  process-messages                  ;; Procesamos los mensajes. En el caso de los sellers enviamos aqui las respuestas a las distintas offers
+  move-buyers                       ;; Cada buyer se mueve a lo loco tratando de buscar un seller
+  handle-buyer-meets-seller         ;; Mandamos mensajes nuevos
+  handle-deaths                     ;; If a buyer or seller consistently fails to make a deal, it'll die.
+  ask buyers[
+    set money money + money-per-tick
+  ]
   tick
 end
 
@@ -90,48 +88,48 @@ to move-buyers
 end
 
 to handle-buyer-meets-seller
-  let avaliable-buyers buyers with [paired? = false]
-  ask avaliable-buyers [
-    let max-buying willing-to-pay-price
-    let the-seller one-of link-neighbors with [breed = sellers]
-
-    if the-seller != nobody[
-      let min-selling [willing-to-sell-price] of the-seller
-
-      ;; Si willing-to-pay-price >= willing-to-sell-price, la transaccion es la suma de ambos entre dos (media)
-      if (max-buying <= min-selling ) and (money > min-selling)
-      [
-        ;; Fiquem el paired a ture tant del seller com del buyer
-        negociate-buyer self the-seller
+  ask buyers [
+    let max-buying willing-to-buy-price
+    if any? sellers-on neighbors4 [
+      let the-seller one-of [who] of sellers-on neighbors4
+      ;;let the-seller one-of link-neighbors with [breed = sellers]
+      if the-seller != nobody[
+        if (money > max-buying)[
+          ;; Send an offer message to the-seller
+          send-message (seller the-seller) "Offer" willing-to-buy-price
+          print ( word "(offer (x " self ") (y (seller "the-seller")) amount("willing-to-buy-price"))")
+        ]
       ]
-      ;; Si willing-to-pay-price < willing-to-sell-price, no hay negocio (failed deals ++)
-      else
     ]
-
-
-
   ]
+end
+to handle-seller-meets-buyer
+
 end
 
 to negociate-buyer [ some-buyer some-seller ]
-
-
-
-
-
   ;; El seller da al mercado su porcentaje
   ;; Una vez terminado el tramite, cada uno reevalua lo que ha pasado y ajusta sus preferencias
 end
 
 to swap-messages
-  ask turtles [
+  ask sellers [
+    set current-messages next-messages
+    set next-messages []
+  ]
+  ask buyers [
     set current-messages next-messages
     set next-messages []
   ]
 end
 
 to process-messages
-  ask turtles [
+  ask sellers [
+    foreach current-messages [ ?1 ->
+      process-message (item 0 ?1) (item 1 ?1) (item 2 ?1) ;; Cada mensaje es una lista [emisor tipo mensaje]
+    ]
+  ]
+  ask buyers [
     foreach current-messages [ ?1 ->
       process-message (item 0 ?1) (item 1 ?1) (item 2 ?1) ;; Cada mensaje es una lista [emisor tipo mensaje]
     ]
@@ -139,38 +137,69 @@ to process-messages
 end
 
 to process-message [sender kind message]
-  if kind = "Ping" [
-    process-ping-message sender message
+  if kind = "Offer" [
+    process-offer-message sender message
   ]
-
-  if kind = "Pong" [
-    process-pong-message sender message
+  if kind = "Accept" [
+    process-accept-message sender message
   ]
-end
-
-to process-ping-message [sender message]
-  ;; A los pings respondemos con un pong
-  send-message sender "Pong" message
-  print (word self " PING? " message " from " sender)
-end
-
-to process-pong-message [sender message]
-  ;; En los pongs solo mostramos que lo hemos recibido
-  print (word self " PONG! " message " from " sender)
-end
-
-to send-messages
-  ask turtles [
-    let turtle-targets [who] of (other turtles) in-radius 2 ;;get all the turtles in radious 2
-    foreach turtle-targets
-      [ turtle-one ->
-        let dice random 100
-        if dice < probOcuparPos and isStopped = true[  ;;if the probablity is higher than a rendom and the target is stopped
-          send-message (turtle turtle-one) "Ping" ticks
-        ]
-      ]
+  if kind = "Decline" [
+    process-decline-message sender message
   ]
 end
+
+to process-offer-message [sender message] ;; seller whe he gets an offer
+  let max-buying [willing-to-buy-price] of sender
+  let min-selling willing-to-sell-price
+
+  ;; Si willing-to-pay-price >= willing-to-sell-price, la transaccion es la suma de ambos entre dos (media)
+  ifelse max-buying >= min-selling
+  [ send-message sender "Accept" message
+    print ( word "(accept (y " self ") (x "sender") amount("message"))")
+
+    ;; Rise the selling price of his offer (as he is doing well)
+    set willing-to-sell-price willing-to-sell-price + 5
+
+    ;; As we have complited a deal we set the following value to zero
+    set consecutive-failed-deals 0]
+
+  [ send-message sender "Decline" message
+    print ( word "(decline (y " self ") (x " sender "))")
+
+    ;; Reduce the selling price of his offer (as he is doing bad) if the seller sended 3 consecutevely decline messages
+    ifelse consecutive-failed-deals >= 3
+    [ set willing-to-sell-price willing-to-sell-price - 5
+      set consecutive-failed-deals 0]
+    [ ;; Increment the consecutive-failed-deals by one
+      set consecutive-failed-deals consecutive-failed-deals + 1]
+  ]
+end
+
+to process-accept-message [sender message] ;; buyer when gets accepted his offer
+  ;; Make the buyer pay
+  set money money - willing-to-buy-price
+
+  ;; The market takes the comission
+  set market-benefits market-benefits + (market-tax * willing-to-buy-price)
+
+  ;; Reduce the buying price of his offer (as he is doing well)
+  set willing-to-buy-price willing-to-buy-price - 5
+
+  ;; As we have complited a deal we set the following value to zero
+  set consecutive-failed-deals 0
+
+end
+
+to process-decline-message [sender message] ;; buyer when gets rejected his offer
+  ;; Rise the buying price of his offer (as he is doing bad) if the buyer got 3 consecutevely decline messages
+  ifelse consecutive-failed-deals >= 3
+  [ set willing-to-buy-price willing-to-buy-price - 5
+    set consecutive-failed-deals 0]
+
+  [ ;; Increment the consecutive-failed-deals by one
+    set consecutive-failed-deals consecutive-failed-deals + 1]
+end
+
 
 to send-message [recipient kind message]
   ;; Añadimos el mensaje a la cola de mensajes del agente receptor
@@ -181,18 +210,18 @@ to send-message [recipient kind message]
 end
 
 to handle-deaths ;; jo sincerament matava només els buyyers que porten moltes iteracions sense comprar res
-  ask buyers [ if consecutive-failed-deals > maximum-consecutively-failed-deals [ die ] ]
-  ask sellers [ if consecutive-failed-sales > maximum-consecutively-failed-deals [ die ] ]
+  ask buyers [ if consecutive-failed-deals > maximum-consecutively-failed-deals [ die print(word self " has died.") ] ]
+  ask sellers [ if consecutive-failed-deals > maximum-consecutively-failed-deals [ die print(word self " has died.") ] ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-435
-31
-872
-469
+225
+10
+653
+439
 -1
 -1
-13.0
+12.73
 1
 10
 1
@@ -213,10 +242,10 @@ ticks
 1.0
 
 SLIDER
-30
-49
-219
-82
+10
+24
+199
+57
 numbuyers
 numbuyers
 0
@@ -228,10 +257,10 @@ buyers
 HORIZONTAL
 
 SLIDER
-32
-97
-219
-130
+12
+72
+199
+105
 numsellers
 numsellers
 0
@@ -243,10 +272,10 @@ sellers
 HORIZONTAL
 
 BUTTON
-37
-153
-110
-186
+17
+128
+90
+161
 setup
 setup
 NIL
@@ -260,10 +289,10 @@ NIL
 1
 
 BUTTON
-125
-155
-188
-188
+105
+130
+168
+163
 go
 go
 T
@@ -277,25 +306,25 @@ NIL
 1
 
 SLIDER
-19
-214
-284
-247
+675
+20
+940
+53
 average-initial-money
 average-initial-money
 0
 1000
-1000.0
+384.0
 1
 1
 euros
 HORIZONTAL
 
 SLIDER
-21
-270
-221
-303
+677
+76
+877
+109
 product-price
 product-price
 0
@@ -307,33 +336,48 @@ euros
 HORIZONTAL
 
 SLIDER
-22
-321
-349
-354
+678
+127
+968
+160
 average-willing-amount-to-pay
 average-willing-amount-to-pay
 0
-1000
-131.0
+200
+132.0
 1
 1
 euros
 HORIZONTAL
 
 SLIDER
-23
-370
-379
-403
+679
+176
+1035
+209
 maximum-consecutively-failed-deals
 maximum-consecutively-failed-deals
 0
 100
-50.0
+5.0
 1
 1
 deals
+HORIZONTAL
+
+SLIDER
+681
+231
+853
+264
+money-per-tick
+money-per-tick
+0
+10
+5.0
+1
+1
+euros
 HORIZONTAL
 
 @#$#@#$#@
