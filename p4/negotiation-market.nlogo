@@ -215,9 +215,9 @@ to handle-deaths ;; jo sincerament matava només els buyyers que porten moltes i
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-225
+270
 10
-653
+698
 439
 -1
 -1
@@ -306,9 +306,9 @@ NIL
 1
 
 SLIDER
-675
+720
 20
-940
+985
 53
 average-initial-money
 average-initial-money
@@ -321,9 +321,9 @@ euros
 HORIZONTAL
 
 SLIDER
-677
+722
 76
-877
+922
 109
 product-price
 product-price
@@ -336,9 +336,9 @@ euros
 HORIZONTAL
 
 SLIDER
-678
+723
 127
-968
+1013
 160
 average-willing-amount-to-pay
 average-willing-amount-to-pay
@@ -351,9 +351,9 @@ euros
 HORIZONTAL
 
 SLIDER
-679
+724
 176
-1035
+1080
 209
 maximum-consecutively-failed-deals
 maximum-consecutively-failed-deals
@@ -366,9 +366,9 @@ deals
 HORIZONTAL
 
 SLIDER
-681
+726
 231
-853
+898
 264
 money-per-tick
 money-per-tick
@@ -379,6 +379,25 @@ money-per-tick
 1
 euros
 HORIZONTAL
+
+PLOT
+5
+180
+250
+370
+plot 1
+Ticks
+Average price of deals
+0.0
+200.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -2674135 true "" "plot mean [willing-to-buy-price] of buyers"
+"pen-1" 1.0 0 -16777216 true "" "auto-plot-off\n;; now we draw an axis by drawing a line from the origin...\nplotxy 0 0\n;; ...to a point that's way, way, way off to the right.\nplotxy 1000000000 0\n;; now that we're done drawing the axis, we can turn\n;; auto-plot back on again\nauto-plot-on"
 
 @#$#@#$#@
 ## WHAT IS IT?
