@@ -6,6 +6,7 @@ globals [
 
   ;; dynamic variables
   market-benefits ;; Total amount of money that the market has taken
+  n-deals;; Total amount of deals per tick
 ]
 
 ;; Two agent roles: buyer and seller
@@ -40,17 +41,15 @@ to setup
   reset-ticks
   make-buyers
   make-sellers
-
-  ;; Resto del setup
 end
 
 to make-buyers
   set-default-shape buyers "person"
   create-buyers numbuyers [
     set color blue
-    set money average-initial-money + (random 500 - random 500)
+    set money average-initial-money + (random 500 - random 500) ;; Initial money depends on input from the user
     set willing-to-buy-price (average-willing-amount-to-pay + (random 30 - random 30)) ;; Initial willingness depends on input from the user
-    set consecutive-failed-deals 0
+    set consecutive-failed-deals 0 ;; variable to record the past failed deals
     set next-messages []
     setxy random-xcor random-ycor
   ]
@@ -61,20 +60,22 @@ to make-sellers
   create-sellers numsellers [
     set color red
     set willing-to-sell-price (average-product-price + (random 30 - random 30)) ;; Initial selling price depends on input from the user
-    set consecutive-failed-deals 0
+    set consecutive-failed-deals 0 ;; variable to record the past failed deals
     set next-messages []
-    setxy random-xcor random-ycor ;;(max-pycor - (max-pycor / 10)) ;; Sellers display their products forming a line
+    setxy random-xcor random-ycor
   ]
 end
 
 to go
-  swap-messages                     ;; Activamos los mensajes mandados en la iteración anterior
-  process-messages                  ;; Procesamos los mensajes. En el caso de los sellers enviamos aqui las respuestas a las distintas offers
-  move-buyers                       ;; Cada buyer se mueve a lo loco tratando de buscar un seller
-  handle-buyer-meets-seller         ;; Mandamos mensajes nuevos
+  set n-deals 0                       ;; Variable to record the number of deals per tick
+  swap-messages                       ;; Activamos los mensajes mandados en la iteración anterior
+  process-messages                    ;; Procesamos los mensajes. En el caso de los sellers enviamos aqui las respuestas a las distintas offers
+  move-buyers                         ;; Cada buyer se mueve a lo loco tratando de buscar un seller
+  handle-buyer-meets-seller           ;; Mandamos mensajes nuevos
   ask buyers[
-    set money money + money-per-tick
+    set money money + money-per-tick  ;; Give a bit of money to buyers at every tick
   ]
+
   tick
 end
 
@@ -139,42 +140,43 @@ to process-message [sender kind message]
   ]
 end
 
-to process-offer-message [sender message] ;; seller whe he gets an offer
+to process-offer-message [sender message] ;; seller when he gets an offer
   let max-buying [willing-to-buy-price] of sender
   let min-selling willing-to-sell-price
 
   ;; Si willing-to-pay-price >= willing-to-sell-price, la transaccion es la suma de ambos entre dos (media)
   ifelse max-buying >= min-selling
-  [ send-message sender "Accept" message
-    print ( word "(accept (y " self ") (x "sender") amount("message"))")
+  [ let price ((max-buying + min-selling) / 2)
+    send-message sender "Accept" price
+    print ( word "(accept (y " self ") (x "sender") amount("price"))")
+    set n-deals n-deals + 1
 
     ;; Rise the selling price of his offer (as he is doing well)
-    set willing-to-sell-price willing-to-sell-price + random 5
+    set willing-to-sell-price (willing-to-sell-price + (average-correction + (random average-correction - random average-correction)))
 
     ;; As we have complited a deal we set the following value to zero
-    set consecutive-failed-deals 0]
+    set consecutive-failed-deals 0
+
+    ;; And then we pay our taxes
+    set market-benefits market-benefits + (fixed-part + market-tax * price)
+  ]
 
   [ send-message sender "Decline" message
     print ( word "(decline (y " self ") (x " sender "))")
 
-    ;; Reduce the selling price of his offer (as he is doing bad) if the seller sended 3 consecutevely decline messages
-    ifelse consecutive-failed-deals >= 3
-    [ set willing-to-sell-price willing-to-sell-price - random 5
-      set consecutive-failed-deals 0]
-    [ ;; Increment the consecutive-failed-deals by one
-      set consecutive-failed-deals consecutive-failed-deals + 1]
+    ;; Reduce the selling price of his offer (as he is doing bad) if the seller fails to seal a deal
+     set willing-to-sell-price (willing-to-sell-price - (average-correction + (random average-correction - random average-correction)))
+    ;; Increment the consecutive-failed-deals by one
+      set consecutive-failed-deals consecutive-failed-deals + 1
   ]
 end
 
 to process-accept-message [sender message] ;; buyer when gets accepted his offer
   ;; Make the buyer pay
-  set money money - willing-to-buy-price
-
-  ;; The market takes the comission
-  set market-benefits market-benefits + (market-tax * willing-to-buy-price)
+  set money money - message
 
   ;; Reduce the buying price of his offer (as he is doing well)
-  set willing-to-buy-price willing-to-buy-price - random 5
+  set willing-to-buy-price (willing-to-buy-price - (average-correction + (random average-correction - random average-correction)))
 
   ;; As we have complited a deal we set the following value to zero
   set consecutive-failed-deals 0
@@ -182,13 +184,12 @@ to process-accept-message [sender message] ;; buyer when gets accepted his offer
 end
 
 to process-decline-message [sender message] ;; buyer when gets rejected his offer
-  ;; Rise the buying price of his offer (as he is doing bad) if the buyer got 3 consecutevely decline messages
-  ifelse consecutive-failed-deals >= 3
-  [ set willing-to-buy-price willing-to-buy-price - random 5
-    set consecutive-failed-deals 0]
+  ;; Rise the buying price of his offer (as he is doing bad) when the buyer fails to seal the deal
 
-  [ ;; Increment the consecutive-failed-deals by one
-    set consecutive-failed-deals consecutive-failed-deals + 1]
+   set willing-to-buy-price (willing-to-buy-price + (average-correction + (random average-correction - random average-correction)))
+
+   ;; Increment the consecutive-failed-deals by one
+    set consecutive-failed-deals consecutive-failed-deals + 1
 end
 
 
@@ -202,10 +203,10 @@ end
 
 @#$#@#$#@
 GRAPHICS-WINDOW
-270
-10
-698
-439
+0
+460
+428
+889
 -1
 -1
 12.73
@@ -237,7 +238,7 @@ numbuyers
 numbuyers
 0
 100
-100.0
+50.0
 1
 1
 buyers
@@ -316,7 +317,7 @@ average-product-price
 average-product-price
 0
 200
-150.0
+100.0
 1
 1
 euros
@@ -331,25 +332,10 @@ average-willing-amount-to-pay
 average-willing-amount-to-pay
 0
 200
-140.0
+100.0
 1
 1
 euros
-HORIZONTAL
-
-SLIDER
-5
-275
-240
-308
-maximum-consecutively-failed-deals
-maximum-consecutively-failed-deals
-0
-100
-3.0
-1
-1
-deals
 HORIZONTAL
 
 SLIDER
@@ -361,17 +347,17 @@ money-per-tick
 money-per-tick
 0
 10
-1.0
+5.0
 1
 1
 euros
 HORIZONTAL
 
 PLOT
-710
-45
-1255
-400
+260
+35
+805
+390
 plot 1
 Ticks
 NIL
@@ -384,8 +370,66 @@ true
 "" ""
 PENS
 "Average deal price" 1.0 0 -2674135 true "" "plot mean [willing-to-buy-price] of buyers"
-"Zero" 1.0 0 -16777216 true "" "auto-plot-off\n;; now we draw an axis by drawing a line from the origin...\nplotxy 0 0\n;; ...to a point that's way, way, way off to the right.\nplotxy 1000000000 0\n;; now that we're done drawing the axis, we can turn\n;; auto-plot back on again\nauto-plot-on"
 "Average money" 1.0 0 -13345367 true "" "plot mean [money] of buyers"
+
+SLIDER
+35
+275
+222
+308
+average-correction
+average-correction
+0
+100
+50.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+35
+415
+207
+448
+fixed-part
+fixed-part
+0
+10
+5.0
+1
+1
+NIL
+HORIZONTAL
+
+PLOT
+810
+35
+1245
+315
+deals
+Ticks
+n of deals / tick
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -13840069 true "" "plot n-deals"
+
+MONITOR
+835
+335
+932
+380
+market-benefits
+market-benefits
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
